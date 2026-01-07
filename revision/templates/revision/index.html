@@ -139,11 +139,13 @@
             }
 
             let audioHtml = '';
-            if (data.audio_data_url) {
-                // If we already have the audio data (e.g. from cache or prefetch later if we decide to prefetch audio too)
-                audioHtml = `<audio style="width: 100%;" controls class="real-audio"><source src="${data.audio_data_url}" type="audio/mpeg">Your browser does not support the audio element.</audio>`;
-            } else if (data.has_audio) {
-                audioHtml = `<button class="nav-action-btn" onclick="loadAudio(${data.num_qst}, this)">🎧 Charger l'audio</button>`;
+            if (data.has_audio) {
+                // Use native audio player with preload="none" to lazy load
+                const audioUrl = `/api/exam/${EXAM_ID}/question/${data.num_qst}/audio/`;
+                audioHtml = `<audio style="width: 100%;" controls preload="none" class="real-audio">
+                                <source src="${audioUrl}" type="audio/mpeg">
+                                Your browser does not support the audio element.
+                             </audio>`;
             } else {
                 audioHtml = '<p>No audio available.</p>';
             }
@@ -189,64 +191,23 @@
             `;
         }
 
-        // Fetch and display question
-        async function loadQuestion(num) {
+        // Show question from cache
+        function loadQuestion(num) {
             const container = document.getElementById('question-container');
 
-            // Check cache first
-            if (questionCache[num]) {
-                container.innerHTML = renderQuestion(questionCache[num]);
-                container.dataset.solution = questionCache[num].solution_qst;
-                container.dataset.score = questionCache[num].score;
-                container.dataset.num = num;
-                attachAnswerListener(num);
+            // Wait for data if not yet loaded (should be fast)
+            if (!questionCache[num]) {
+                container.innerHTML = '<div class="loading-indicator"><p>Chargement des questions...</p></div>';
+                // Retry in a bit if bulk fetch isn't done
+                setTimeout(() => loadQuestion(num), 100);
                 return;
             }
 
-            // Show loading
-            container.innerHTML = '<div class="loading-indicator"><p>Chargement de la question...</p></div>';
-
-            try {
-                const response = await fetch(`/api/exam/${EXAM_ID}/question/${num}/`);
-                if (!response.ok) throw new Error('Failed to fetch');
-                const data = await response.json();
-
-                // Cache it
-                questionCache[num] = data;
-
-                // Render
-                container.innerHTML = renderQuestion(data);
-                container.dataset.solution = data.solution_qst;
-                container.dataset.score = data.score;
-                container.dataset.num = num;
-                attachAnswerListener(num);
-            } catch (error) {
-                container.innerHTML = '<p>Erreur lors du chargement de la question.</p>';
-                console.error(error);
-            }
-        }
-
-        async function loadAudio(num, btn) {
-            btn.innerText = 'Chargement...';
-            btn.disabled = true;
-            try {
-                const response = await fetch(`/api/exam/${EXAM_ID}/question/${num}/audio/`);
-                if (!response.ok) throw new Error('Failed to fetch audio');
-                const data = await response.json();
-
-                // Update cache if exists
-                if (questionCache[num]) {
-                    questionCache[num].audio_data_url = data.audio_data_url;
-                }
-
-                // Replace button with player
-                const playerContainer = btn.parentElement;
-                playerContainer.innerHTML = `<audio style="width: 100%;" controls autoplay class="real-audio"><source src="${data.audio_data_url}" type="audio/mpeg">Your browser does not support the audio element.</audio>`;
-            } catch (error) {
-                console.error(error);
-                btn.innerText = 'Erreur lors du chargement';
-                btn.disabled = false;
-            }
+            container.innerHTML = renderQuestion(questionCache[num]);
+            container.dataset.solution = questionCache[num].solution_qst;
+            container.dataset.score = questionCache[num].score;
+            container.dataset.num = num;
+            attachAnswerListener(num);
         }
 
         function attachAnswerListener(num) {
@@ -336,14 +297,13 @@
             // Load all questions for review
             const container = document.getElementById('questions-section');
             container.style.display = 'block';
-            container.innerHTML = '<p>Chargement des réponses...</p>';
+            container.innerHTML = '';
 
             let allHtml = '';
             for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
-                if (!questionCache[i]) {
-                    const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
-                    questionCache[i] = await response.json();
-                }
+                // Ensure data is loaded (should be by now)
+                if (!questionCache[i]) continue;
+
                 const data = questionCache[i];
                 const result = quizResults[i];
 
@@ -403,25 +363,26 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
             startTimer();
-            loadQuestion(1).then(() => {
-                // Start prefetching other questions in the background
-                prefetchAll();
+            fetchAllQuestions().then(() => {
+                loadQuestion(1);
             });
         });
 
-        async function prefetchAll() {
-            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
-                if (!questionCache[i]) {
-                    try {
-                        const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
-                        if (response.ok) {
-                            questionCache[i] = await response.json();
-                        }
-                    } catch (e) {
-                        console.warn("Prefetch failed for question " + i);
-                    }
-                    await new Promise(r => setTimeout(r, 1000));
-                }
+        async function fetchAllQuestions() {
+            const container = document.getElementById('question-container');
+            container.innerHTML = '<div class="loading-indicator"><p>Chargement du quiz...</p></div>';
+
+            try {
+                const response = await fetch(`/api/exam/${EXAM_ID}/questions/all/`);
+                if (!response.ok) throw new Error('Failed to load questions');
+                const data = await response.json();
+
+                data.questions.forEach(q => {
+                    questionCache[q.num_qst] = q;
+                });
+            } catch (e) {
+                console.error("Failed to load questions", e);
+                container.innerHTML = '<p>Erreur de chargement. Veuillez rafraîchir la page.</p>';
             }
         }
     </script>
