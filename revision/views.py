@@ -30,7 +30,7 @@ def question_api(request, exam_id, question_num):
         'num_qst': question.num_qst,
         'text_qst': question.text_qst,
         'image_qst': question.image_qst or '',
-        'audio_data_url': question.audio_data_url or '',
+        'has_audio': bool(question.audio_qst),
         'choice_a': question.choice_a,
         'choice_b': question.choice_b,
         'choice_c': question.choice_c,
@@ -39,3 +39,15 @@ def question_api(request, exam_id, question_num):
         'solution_qst': question.solution_qst,
     }
     return JsonResponse(data)
+
+def question_audio_api(request, exam_id, question_num):
+    """API endpoint to fetch just the audio data for a question"""
+    question = get_object_or_404(
+        QuestionOrale, 
+        exam_id=exam_id, 
+        num_qst=question_num
+    )
+    
+    return JsonResponse({
+        'audio_data_url': question.audio_data_url or ''
+    })
