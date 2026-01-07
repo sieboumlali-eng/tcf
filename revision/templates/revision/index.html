@@ -1,0 +1,349 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ exam.description_exam_orale }}</title>
+    <link rel="stylesheet" href="{% static 'revision/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Timer Widget -->
+    <div id="timer-widget" class="timer-widget">
+        <div class="timer-display" id="timer-display">00:00:00</div>
+        <div class="timer-controls">
+            <button id="timer-pause" class="timer-btn" onclick="toggleTimer()">⏸️</button>
+            <button id="timer-reset" class="timer-btn" onclick="resetTimer()">🔄</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Results Summary (Hidden initially) -->
+        <div id="results-summary" class="results-summary" style="display: none;">
+            <h2>Résultats</h2>
+            <p id="correct-count" class="correct-count"></p>
+            <div class="score-bar-container">
+                <div id="score-bar" class="score-bar"></div>
+                <span id="score-text" class="score-text"></span>
+            </div>
+            <div id="rank-display" class="rank-display"></div>
+
+            <!-- Results Nav Grid -->
+            <div id="results-nav-grid" class="results-nav-grid"></div>
+            <div class="results-legend">
+                <span class="legend-item"><span class="dot correct-dot"></span> Correct</span>
+                <span class="legend-item"><span class="dot incorrect-dot"></span> Incorrect</span>
+            </div>
+
+            <div class="results-actions">
+                <button class="nav-action-btn" onclick="showAnswers()">Voir les réponses</button>
+                <button class="nav-action-btn restart-btn" onclick="restartQuiz()">Relancer le Quiz</button>
+            </div>
+        </div>
+
+        <!-- Questions Grid (Quiz Mode) -->
+        <div id="quiz-nav" class="questions-nav">
+            <div class="nav-grid">
+                {% for q in questions %}
+                <button class="nav-btn {% if forloop.first %}active{% endif %}"
+                    onclick="showQuestion({{ q.num_qst }})">{{ q.num_qst }}</button>
+                {% endfor %}
+            </div>
+            <div class="nav-legend">
+                <span class="legend-item"><span class="dot active-dot"></span> Actuel</span>
+                <span class="legend-item"><span class="dot answered-dot"></span> Répondu</span>
+            </div>
+        </div>
+
+        <!-- Questions Section -->
+        <div id="questions-section">
+            {% for question in questions %}
+            <div class="question-container" id="question-{{ question.num_qst }}"
+                data-solution="{{ question.solution_qst }}" data-score="{{ question.score }}"
+                style="{% if not forloop.first %}display:none;{% endif %}">
+                <div class="question-header">
+                    <h2>Question {{ question.num_qst }} :</h2>
+                    <span class="points">{{ question.score }} Points</span>
+                </div>
+
+                <div class="question-content">
+                    {% if question.image_qst %}
+                    <div class="image-wrapper">
+                        <img style="width: 500px;" src="{{ question.image_qst }}" alt="Question Image"
+                            class="question-img">
+                    </div>
+                    {% endif %}
+
+                    <p class="instruction">{{ question.text_qst }}</p>
+
+                    <!-- Audio Player -->
+                    <div class="audio-player-container">
+                        {% if question.audio_qst %}
+                        <audio style="width: 100%;" controls class="real-audio">
+                            <source src="{{ question.audio_data_url }}" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                        {% else %}
+                        <p>No audio available.</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="choices">
+                        <label class="choice-item">
+                            <input type="radio" name="q{{ question.num_qst }}" value="A">
+                            <span class="choice-label">A</span>
+                            <span class="choice-text">{{ question.choice_a }}</span>
+                        </label>
+                        <label class="choice-item">
+                            <input type="radio" name="q{{ question.num_qst }}" value="B">
+                            <span class="choice-label">B</span>
+                            <span class="choice-text">{{ question.choice_b }}</span>
+                        </label>
+                        <label class="choice-item">
+                            <input type="radio" name="q{{ question.num_qst }}" value="C">
+                            <span class="choice-label">C</span>
+                            <span class="choice-text">{{ question.choice_c }}</span>
+                        </label>
+                        <label class="choice-item">
+                            <input type="radio" name="q{{ question.num_qst }}" value="D">
+                            <span class="choice-label">D</span>
+                            <span class="choice-text">{{ question.choice_d }}</span>
+                        </label>
+                    </div>
+
+                    <!-- Navigation Actions -->
+                    <div class="quiz-actions">
+                        {% if not forloop.first %}
+                        <button class="nav-action-btn prev-btn"
+                            onclick="showQuestion({{ question.num_qst|add:'-1' }})">Retour</button>
+                        {% else %}
+                        <div></div>
+                        {% endif %}
+
+                        {% if not forloop.last %}
+                        <button class="nav-action-btn next-btn"
+                            onclick="showQuestion({{ question.num_qst|add:'1' }})">Suivant</button>
+                        {% else %}
+                        <button class="nav-action-btn finish-btn" onclick="finishQuiz()">Terminer le Quiz</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p>No questions available.</p>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <script>
+        let quizResults = {}; // Store results for each question
+
+        // Timer variables
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let timerRunning = false;
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(timerSeconds / 3600);
+            const minutes = Math.floor((timerSeconds % 3600) / 60);
+            const seconds = timerSeconds % 60;
+            document.getElementById('timer-display').innerText =
+                String(hours).padStart(2, '0') + ':' +
+                String(minutes).padStart(2, '0') + ':' +
+                String(seconds).padStart(2, '0');
+        }
+
+        function startTimer() {
+            if (!timerRunning) {
+                timerRunning = true;
+                timerInterval = setInterval(() => {
+                    timerSeconds++;
+                    updateTimerDisplay();
+                }, 1000);
+                document.getElementById('timer-pause').innerText = '⏸️';
+            }
+        }
+
+        function toggleTimer() {
+            if (timerRunning) {
+                clearInterval(timerInterval);
+                timerRunning = false;
+                document.getElementById('timer-pause').innerText = '▶️';
+            } else {
+                startTimer();
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerSeconds = 0;
+            updateTimerDisplay();
+            document.getElementById('timer-pause').innerText = '▶️';
+        }
+
+        // Auto-start timer on page load
+        document.addEventListener('DOMContentLoaded', function () {
+            startTimer();
+        });
+
+        function showQuestion(num) {
+            document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
+            document.getElementById('question-' + num).style.display = 'block';
+
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                if (parseInt(el.innerText) === num) el.classList.add('active');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Hide empty 1x1 pixel placeholder images
+            const emptyPixel = 'data:image/png;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+            document.querySelectorAll('.question-img').forEach(img => {
+                if (img.src === emptyPixel) {
+                    img.style.display = 'none';
+                }
+            });
+
+            const inputs = document.querySelectorAll('input[type="radio"]');
+            inputs.forEach(input => {
+                input.addEventListener('change', function () {
+                    const qNum = this.name.substring(1);
+                    document.querySelectorAll('.nav-btn').forEach(btn => {
+                        if (btn.innerText.trim() === qNum) {
+                            btn.classList.add('answered');
+                        }
+                    });
+                });
+            });
+        });
+
+        function finishQuiz() {
+            let totalScore = 0;
+            let maxScore = 0;
+            let correctCount = 0;
+            let totalQuestions = 0;
+
+            // Calculate results
+            document.querySelectorAll('.question-container').forEach(container => {
+                const solution = container.dataset.solution;
+                const score = parseInt(container.dataset.score) || 0;
+                const qNum = container.id.replace('question-', '');
+
+                totalQuestions++;
+                maxScore += score;
+
+                const selectedInput = document.querySelector(`input[name="q${qNum}"]:checked`);
+                const selectedVal = selectedInput ? selectedInput.value : null;
+
+                const isCorrect = selectedVal === solution;
+                quizResults[qNum] = { isCorrect, selectedVal, solution, score };
+
+                if (isCorrect) {
+                    totalScore += score;
+                    correctCount++;
+                }
+            });
+
+            // Hide quiz nav and questions
+            document.getElementById('quiz-nav').style.display = 'none';
+            document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
+
+            // Build results nav grid
+            const resultsNavGrid = document.getElementById('results-nav-grid');
+            resultsNavGrid.innerHTML = '';
+            Object.keys(quizResults).forEach(qNum => {
+                const btn = document.createElement('button');
+                btn.className = 'result-nav-btn ' + (quizResults[qNum].isCorrect ? 'correct' : 'incorrect');
+                btn.innerText = qNum;
+                resultsNavGrid.appendChild(btn);
+            });
+
+            // Update summary
+            document.getElementById('correct-count').innerText = `${correctCount} sur ${totalQuestions} Questions sont correctes.`;
+
+            const percentage = Math.round((totalScore / maxScore) * 100);
+            document.getElementById('score-bar').style.width = percentage + '%';
+            document.getElementById('score-text').innerText = `Vous avez atteint ${totalScore} sur ${maxScore} point(s), (${percentage}%)`;
+
+            // Calculate rank based on score
+            let rank = 'Non classé';
+            if (totalScore >= 600) {
+                rank = 'C2';
+            } else if (totalScore >= 500) {
+                rank = 'C1';
+            } else if (totalScore >= 400) {
+                rank = 'B2';
+            } else if (totalScore >= 300) {
+                rank = 'B1';
+            } else if (totalScore >= 200) {
+                rank = 'A2';
+            } else if (totalScore >= 100) {
+                rank = 'A1';
+            }
+            document.getElementById('rank-display').innerHTML = `<h3>${rank}</h3><p>Votre niveau</p>`;
+
+            // Show results summary
+            document.getElementById('results-summary').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        function showAnswers() {
+            // Apply correct/incorrect classes to choices
+            document.querySelectorAll('.question-container').forEach(container => {
+                container.style.display = 'block';
+                const qNum = container.id.replace('question-', '');
+                const result = quizResults[qNum];
+
+                container.querySelectorAll('.choice-item input').forEach(input => {
+                    const label = input.parentElement;
+                    const val = input.value;
+
+                    if (val === result.solution) {
+                        label.classList.add('correct');
+                    }
+                    if (result.selectedVal === val && val !== result.solution) {
+                        label.classList.add('incorrect');
+                    }
+                });
+            });
+
+            // Hide quiz actions
+            document.querySelectorAll('.quiz-actions').forEach(el => el.style.display = 'none');
+        }
+
+        function restartQuiz() {
+            // Reset all
+            quizResults = {};
+            document.querySelectorAll('.choice-item').forEach(el => {
+                el.classList.remove('correct', 'incorrect');
+            });
+            document.querySelectorAll('input[type="radio"]').forEach(el => el.checked = false);
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('answered'));
+            document.querySelectorAll('.quiz-actions').forEach(el => el.style.display = 'flex');
+
+            // Hide results, show quiz
+            document.getElementById('results-summary').style.display = 'none';
+            document.getElementById('quiz-nav').style.display = 'block';
+
+            // Show first question
+            document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
+            document.querySelector('.question-container').style.display = 'block';
+
+            // Reset nav active state
+            document.querySelectorAll('.nav-btn').forEach((el, i) => {
+                el.classList.toggle('active', i === 0);
+            });
+
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+
+</html>

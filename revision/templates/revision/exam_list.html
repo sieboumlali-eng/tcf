@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Selection</title>
+    <link rel="stylesheet" href="{% static 'revision/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        .exam-section {
+            margin-bottom: 30px;
+        }
+
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .exam-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.2s;
+        }
+
+        .exam-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .exam-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+            color: #4a90e2;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Select an Exam</h1>
+
+        <div class="exam-section">
+            <h2>Oral Exams</h2>
+            <div class="exam-grid">
+                {% for exam in exams %}
+                <a href="{% url 'exam_detail' exam.id %}" class="exam-card">
+                    <div class="exam-icon">🎧</div>
+                    <h3>Exam {{ exam.number_exam_orale }}</h3>
+                    <p>{{ exam.description_exam_orale }}</p>
+                </a>
+                {% empty %}
+                <p>No oral exams available.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="exam-section">
+            <h2>Written Exams</h2>
+            <div class="exam-grid">
+                <!-- Placeholders -->
+                <div class="exam-card" style="opacity: 0.5;">
+                    <div class="exam-icon">📝</div>
+                    <h3>Written Exam 1</h3>
+                    <p>Coming Soon</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
