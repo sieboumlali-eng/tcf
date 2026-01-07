@@ -312,6 +312,19 @@
                     imageHtml = `<div class="image-wrapper"><img style="width: 500px;" src="${data.image_qst}" class="question-img"></div>`;
                 }
 
+                let audioHtml = '';
+                if (data.has_audio) {
+                    const audioUrl = `/api/exam/${EXAM_ID}/question/${data.num_qst}/audio/`;
+                    audioHtml = `<div class="audio-player-container">
+                                    <audio style="width: 100%;" controls preload="none" class="real-audio">
+                                        <source src="${audioUrl}" type="audio/mpeg">
+                                        Your browser does not support the audio element.
+                                    </audio>
+                                 </div>`;
+                } else {
+                    audioHtml = '<p>No audio available.</p>';
+                }
+
                 allHtml += `
                     <div class="question-container" style="margin-bottom: 20px;">
                         <div class="question-header">
@@ -320,6 +333,7 @@
                         </div>
                         <div class="question-content">
                             ${imageHtml}
+                            ${audioHtml}
                             <p class="instruction">${data.text_qst}</p>
                             <div class="choices">
                                 ${['A', 'B', 'C', 'D'].map(choice => {
