@@ -61,81 +61,12 @@
 
         <!-- Questions Section -->
         <div id="questions-section">
-            {% for question in questions %}
-            <div class="question-container" id="question-{{ question.num_qst }}"
-                data-solution="{{ question.solution_qst }}" data-score="{{ question.score }}"
-                style="{% if not forloop.first %}display:none;{% endif %}">
-                <div class="question-header">
-                    <h2>Question {{ question.num_qst }} :</h2>
-                    <span class="points">{{ question.score }} Points</span>
-                </div>
-
-                <div class="question-content">
-                    {% if question.image_qst %}
-                    <div class="image-wrapper">
-                        <img style="width: 500px;" src="{{ question.image_qst }}" alt="Question Image"
-                            class="question-img">
-                    </div>
-                    {% endif %}
-
-                    <p class="instruction">{{ question.text_qst }}</p>
-
-                    <!-- Audio Player -->
-                    <div class="audio-player-container">
-                        {% if question.audio_qst %}
-                        <audio style="width: 100%;" controls class="real-audio">
-                            <source src="{{ question.audio_data_url }}" type="audio/mpeg">
-                            Your browser does not support the audio element.
-                        </audio>
-                        {% else %}
-                        <p>No audio available.</p>
-                        {% endif %}
-                    </div>
-
-                    <div class="choices">
-                        <label class="choice-item">
-                            <input type="radio" name="q{{ question.num_qst }}" value="A">
-                            <span class="choice-label">A</span>
-                            <span class="choice-text">{{ question.choice_a }}</span>
-                        </label>
-                        <label class="choice-item">
-                            <input type="radio" name="q{{ question.num_qst }}" value="B">
-                            <span class="choice-label">B</span>
-                            <span class="choice-text">{{ question.choice_b }}</span>
-                        </label>
-                        <label class="choice-item">
-                            <input type="radio" name="q{{ question.num_qst }}" value="C">
-                            <span class="choice-label">C</span>
-                            <span class="choice-text">{{ question.choice_c }}</span>
-                        </label>
-                        <label class="choice-item">
-                            <input type="radio" name="q{{ question.num_qst }}" value="D">
-                            <span class="choice-label">D</span>
-                            <span class="choice-text">{{ question.choice_d }}</span>
-                        </label>
-                    </div>
-
-                    <!-- Navigation Actions -->
-                    <div class="quiz-actions">
-                        {% if not forloop.first %}
-                        <button class="nav-action-btn prev-btn"
-                            onclick="showQuestion({{ question.num_qst|add:'-1' }})">Retour</button>
-                        {% else %}
-                        <div></div>
-                        {% endif %}
-
-                        {% if not forloop.last %}
-                        <button class="nav-action-btn next-btn"
-                            onclick="showQuestion({{ question.num_qst|add:'1' }})">Suivant</button>
-                        {% else %}
-                        <button class="nav-action-btn finish-btn" onclick="finishQuiz()">Terminer le Quiz</button>
-                        {% endif %}
-                    </div>
+            <!-- Questions will be loaded via AJAX -->
+            <div id="question-container" class="question-container">
+                <div class="loading-indicator" id="loading-indicator">
+                    <p>Chargement de la question...</p>
                 </div>
             </div>
-            {% empty %}
-            <p>No questions available.</p>
-            {% endfor %}
         </div>
 
     </div>
