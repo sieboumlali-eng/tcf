@@ -79,11 +79,11 @@
         const EMPTY_PIXEL = 'data:image/png;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
         // State
-        const firstQuestionNum = QUESTIONS_META.length > 0 ? QUESTIONS_META[0].num_qst : 1;
-        let currentQuestion = firstQuestionNum;
+        let currentQuestion = 1;
         let questionCache = {};
         let quizResults = {};
         let userAnswers = {};
+        let isReviewMode = false;
 
         // Timer variables
         let timerSeconds = 0;
@@ -147,6 +147,14 @@
             }
 
             const savedAnswer = userAnswers[data.num_qst] || null;
+            const solution = data.solution_qst;
+
+            function getChoiceClass(choice) {
+                if (!isReviewMode) return '';
+                if (choice === solution) return 'correct';
+                if (savedAnswer === choice && savedAnswer !== solution) return 'incorrect';
+                return '';
+            }
 
             return `
                 <div class="question-header">
@@ -158,31 +166,32 @@
                     <p class="instruction">${data.text_qst}</p>
                     <div class="audio-player-container">${audioHtml}</div>
                     <div class="choices">
-                        <label class="choice-item">
-                            <input type="radio" name="q${data.num_qst}" value="A" ${savedAnswer === 'A' ? 'checked' : ''}>
+                        <label class="choice-item ${getChoiceClass('A')}">
+                            <input type="radio" name="q${data.num_qst}" value="A" ${savedAnswer === 'A' ? 'checked' : ''} ${isReviewMode ? 'disabled' : ''}>
                             <span class="choice-label">A</span>
                             <span class="choice-text">${data.choice_a}</span>
                         </label>
-                        <label class="choice-item">
-                            <input type="radio" name="q${data.num_qst}" value="B" ${savedAnswer === 'B' ? 'checked' : ''}>
+                        <label class="choice-item ${getChoiceClass('B')}">
+                            <input type="radio" name="q${data.num_qst}" value="B" ${savedAnswer === 'B' ? 'checked' : ''} ${isReviewMode ? 'disabled' : ''}>
                             <span class="choice-label">B</span>
                             <span class="choice-text">${data.choice_b}</span>
                         </label>
-                        <label class="choice-item">
-                            <input type="radio" name="q${data.num_qst}" value="C" ${savedAnswer === 'C' ? 'checked' : ''}>
+                        <label class="choice-item ${getChoiceClass('C')}">
+                            <input type="radio" name="q${data.num_qst}" value="C" ${savedAnswer === 'C' ? 'checked' : ''} ${isReviewMode ? 'disabled' : ''}>
                             <span class="choice-label">C</span>
                             <span class="choice-text">${data.choice_c}</span>
                         </label>
-                        <label class="choice-item">
-                            <input type="radio" name="q${data.num_qst}" value="D" ${savedAnswer === 'D' ? 'checked' : ''}>
+                        <label class="choice-item ${getChoiceClass('D')}">
+                            <input type="radio" name="q${data.num_qst}" value="D" ${savedAnswer === 'D' ? 'checked' : ''} ${isReviewMode ? 'disabled' : ''}>
                             <span class="choice-label">D</span>
                             <span class="choice-text">${data.choice_d}</span>
                         </label>
                     </div>
                     <div class="quiz-actions">
                         ${isFirst ? '<div></div>' : `<button class="nav-action-btn prev-btn" onclick="showQuestion(${data.num_qst - 1})">Retour</button>`}
-                        ${isLast ? '<button class="nav-action-btn finish-btn" onclick="finishQuiz()">Terminer le Quiz</button>' : `<button class="nav-action-btn next-btn" onclick="showQuestion(${data.num_qst + 1})">Suivant</button>`}
+                        ${isLast ? (isReviewMode ? `<button class="nav-action-btn" onclick="showResults()">Retour aux Résultats</button>` : `<button class="nav-action-btn finish-btn" onclick="finishQuiz()">Terminer le Quiz</button>`) : `<button class="nav-action-btn next-btn" onclick="showQuestion(${data.num_qst + 1})">Suivant</button>`}
                     </div>
+                    ${isReviewMode ? `<div style="margin-top: 20px; text-align: center;"><button class="nav-action-btn" onclick="showResults()">Retour aux Résultats</button></div>` : ''}
                 </div>
             `;
         }
@@ -283,6 +292,13 @@
                 const btn = document.createElement('button');
                 btn.className = 'result-nav-btn ' + (quizResults[i].isCorrect ? 'correct' : 'incorrect');
                 btn.innerText = i;
+                btn.onclick = () => {
+                    isReviewMode = true;
+                    showQuestion(i);
+                    document.getElementById('results-summary').style.display = 'none';
+                    document.getElementById('quiz-nav').style.display = 'block';
+                    document.getElementById('questions-section').style.display = 'block';
+                };
                 resultsNavGrid.appendChild(btn);
             }
 
@@ -308,60 +324,26 @@
         }
 
         async function showAnswers() {
-            // Load all questions for review
-            const container = document.getElementById('questions-section');
-            container.style.display = 'block';
-            container.innerHTML = '<p>Chargement des réponses...</p>';
+            isReviewMode = true;
+            document.getElementById('results-summary').style.display = 'none';
+            document.getElementById('quiz-nav').style.display = 'block';
+            document.getElementById('questions-section').style.display = 'block';
 
-            let allHtml = '';
-            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
-                if (!questionCache[i]) {
-                    const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
-                    questionCache[i] = await response.json();
-                }
-                const data = questionCache[i];
-                const result = quizResults[i];
+            showQuestion(1);
+        }
 
-                let imageHtml = '';
-                if (data.image_qst && data.image_qst !== EMPTY_PIXEL) {
-                    imageHtml = `<div class="image-wrapper"><img style="width: 500px;" src="${data.image_qst}" class="question-img"></div>`;
-                }
-
-                allHtml += `
-                    <div class="question-container" style="margin-bottom: 20px;">
-                        <div class="question-header">
-                            <h2>Question ${i} :</h2>
-                            <span class="points">${data.score} Points</span>
-                        </div>
-                        <div class="question-content">
-                            ${imageHtml}
-                            <p class="instruction">${data.text_qst}</p>
-                            <div class="choices">
-                                ${['A', 'B', 'C', 'D'].map(choice => {
-                    const isCorrect = choice === data.solution_qst;
-                    const isSelected = result.selectedVal === choice;
-                    const classes = [];
-                    if (isCorrect) classes.push('correct');
-                    if (isSelected && !isCorrect) classes.push('incorrect');
-                    return `<label class="choice-item ${classes.join(' ')}">
-                                        <input type="radio" disabled ${isSelected ? 'checked' : ''}>
-                                        <span class="choice-label">${choice}</span>
-                                        <span class="choice-text">${data['choice_' + choice.toLowerCase()]}</span>
-                                    </label>`;
-                }).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
-            container.innerHTML = allHtml;
+        function showResults() {
+            document.getElementById('results-summary').style.display = 'block';
+            document.getElementById('quiz-nav').style.display = 'none';
+            document.getElementById('questions-section').style.display = 'none';
+            window.scrollTo(0, 0);
         }
 
         function restartQuiz() {
             quizResults = {};
             userAnswers = {};
-            const firstQuestionNum = QUESTIONS_META.length > 0 ? QUESTIONS_META[0].num_qst : 1;
-            currentQuestion = firstQuestionNum;
+            currentQuestion = 1;
+            isReviewMode = false;
 
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('answered'));
             document.getElementById('results-summary').style.display = 'none';
@@ -372,23 +354,21 @@
                 el.classList.toggle('active', i === 0);
             });
 
-            loadQuestion(firstQuestionNum);
+            loadQuestion(1);
             window.scrollTo(0, 0);
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
             startTimer();
-            const firstQuestionNum = QUESTIONS_META.length > 0 ? QUESTIONS_META[0].num_qst : 1;
-            loadQuestion(firstQuestionNum).then(() => {
+            loadQuestion(1).then(() => {
                 // Start prefetching other questions in the background
                 prefetchAll();
             });
         });
 
         async function prefetchAll() {
-            for (const meta of QUESTIONS_META) {
-                const i = meta.num_qst;
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
                 if (!questionCache[i]) {
                     try {
                         const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
