@@ -72,7 +72,17 @@
     </div>
 
     <script>
-        let quizResults = {}; // Store results for each question
+        // Configuration
+        const EXAM_ID = {{ exam.id }};
+        const TOTAL_QUESTIONS = {{ total_questions }};
+        const QUESTIONS_META = {{ questions| safe }};
+        const EMPTY_PIXEL = 'data:image/png;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
+        // State
+        let currentQuestion = 1;
+        let questionCache = {};
+        let quizResults = {};
+        let userAnswers = {};
 
         // Timer variables
         let timerSeconds = 0;
@@ -118,162 +128,257 @@
             document.getElementById('timer-pause').innerText = '▶️';
         }
 
-        // Auto-start timer on page load
-        document.addEventListener('DOMContentLoaded', function () {
-            startTimer();
-        });
+        // Render question HTML
+        function renderQuestion(data) {
+            const isFirst = data.num_qst === 1;
+            const isLast = data.num_qst === TOTAL_QUESTIONS;
+
+            let imageHtml = '';
+            if (data.image_qst && data.image_qst !== EMPTY_PIXEL) {
+                imageHtml = `<div class="image-wrapper"><img style="width: 500px;" src="${data.image_qst}" alt="Question Image" class="question-img"></div>`;
+            }
+
+            let audioHtml = '';
+            if (data.audio_data_url) {
+                audioHtml = `<audio style="width: 100%;" controls class="real-audio"><source src="${data.audio_data_url}" type="audio/mpeg">Your browser does not support the audio element.</audio>`;
+            } else {
+                audioHtml = '<p>No audio available.</p>';
+            }
+
+            const savedAnswer = userAnswers[data.num_qst] || null;
+
+            return `
+                <div class="question-header">
+                    <h2>Question ${data.num_qst} :</h2>
+                    <span class="points">${data.score} Points</span>
+                </div>
+                <div class="question-content">
+                    ${imageHtml}
+                    <p class="instruction">${data.text_qst}</p>
+                    <div class="audio-player-container">${audioHtml}</div>
+                    <div class="choices">
+                        <label class="choice-item">
+                            <input type="radio" name="q${data.num_qst}" value="A" ${savedAnswer === 'A' ? 'checked' : ''}>
+                            <span class="choice-label">A</span>
+                            <span class="choice-text">${data.choice_a}</span>
+                        </label>
+                        <label class="choice-item">
+                            <input type="radio" name="q${data.num_qst}" value="B" ${savedAnswer === 'B' ? 'checked' : ''}>
+                            <span class="choice-label">B</span>
+                            <span class="choice-text">${data.choice_b}</span>
+                        </label>
+                        <label class="choice-item">
+                            <input type="radio" name="q${data.num_qst}" value="C" ${savedAnswer === 'C' ? 'checked' : ''}>
+                            <span class="choice-label">C</span>
+                            <span class="choice-text">${data.choice_c}</span>
+                        </label>
+                        <label class="choice-item">
+                            <input type="radio" name="q${data.num_qst}" value="D" ${savedAnswer === 'D' ? 'checked' : ''}>
+                            <span class="choice-label">D</span>
+                            <span class="choice-text">${data.choice_d}</span>
+                        </label>
+                    </div>
+                    <div class="quiz-actions">
+                        ${isFirst ? '<div></div>' : `<button class="nav-action-btn prev-btn" onclick="showQuestion(${data.num_qst - 1})">Retour</button>`}
+                        ${isLast ? '<button class="nav-action-btn finish-btn" onclick="finishQuiz()">Terminer le Quiz</button>' : `<button class="nav-action-btn next-btn" onclick="showQuestion(${data.num_qst + 1})">Suivant</button>`}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Fetch and display question
+        async function loadQuestion(num) {
+            const container = document.getElementById('question-container');
+
+            // Check cache first
+            if (questionCache[num]) {
+                container.innerHTML = renderQuestion(questionCache[num]);
+                container.dataset.solution = questionCache[num].solution_qst;
+                container.dataset.score = questionCache[num].score;
+                container.dataset.num = num;
+                attachAnswerListener(num);
+                return;
+            }
+
+            // Show loading
+            container.innerHTML = '<div class="loading-indicator"><p>Chargement de la question...</p></div>';
+
+            try {
+                const response = await fetch(`/api/exam/${EXAM_ID}/question/${num}/`);
+                if (!response.ok) throw new Error('Failed to fetch');
+                const data = await response.json();
+
+                // Cache it
+                questionCache[num] = data;
+
+                // Render
+                container.innerHTML = renderQuestion(data);
+                container.dataset.solution = data.solution_qst;
+                container.dataset.score = data.score;
+                container.dataset.num = num;
+                attachAnswerListener(num);
+            } catch (error) {
+                container.innerHTML = '<p>Erreur lors du chargement de la question.</p>';
+                console.error(error);
+            }
+        }
+
+        function attachAnswerListener(num) {
+            const inputs = document.querySelectorAll(`input[name="q${num}"]`);
+            inputs.forEach(input => {
+                input.addEventListener('change', function () {
+                    userAnswers[num] = this.value;
+                    // Mark nav button as answered
+                    document.querySelectorAll('.nav-btn').forEach(btn => {
+                        if (btn.innerText.trim() === String(num)) {
+                            btn.classList.add('answered');
+                        }
+                    });
+                });
+            });
+        }
 
         function showQuestion(num) {
-            document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
-            document.getElementById('question-' + num).style.display = 'block';
+            currentQuestion = num;
+            loadQuestion(num);
 
+            // Update nav active state
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(el => {
                 if (parseInt(el.innerText) === num) el.classList.add('active');
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            // Hide empty 1x1 pixel placeholder images
-            const emptyPixel = 'data:image/png;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-            document.querySelectorAll('.question-img').forEach(img => {
-                if (img.src === emptyPixel) {
-                    img.style.display = 'none';
-                }
-            });
-
-            const inputs = document.querySelectorAll('input[type="radio"]');
-            inputs.forEach(input => {
-                input.addEventListener('change', function () {
-                    const qNum = this.name.substring(1);
-                    document.querySelectorAll('.nav-btn').forEach(btn => {
-                        if (btn.innerText.trim() === qNum) {
-                            btn.classList.add('answered');
-                        }
-                    });
-                });
-            });
-        });
-
-        function finishQuiz() {
+        async function finishQuiz() {
             let totalScore = 0;
             let maxScore = 0;
             let correctCount = 0;
-            let totalQuestions = 0;
 
-            // Calculate results
-            document.querySelectorAll('.question-container').forEach(container => {
-                const solution = container.dataset.solution;
-                const score = parseInt(container.dataset.score) || 0;
-                const qNum = container.id.replace('question-', '');
+            // Calculate results from cached data and user answers
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+                const data = questionCache[i] || QUESTIONS_META.find(q => q.num_qst === i);
+                const score = data ? data.score : 0;
+                const solution = questionCache[i] ? questionCache[i].solution_qst : null;
+                const userAnswer = userAnswers[i] || null;
 
-                totalQuestions++;
                 maxScore += score;
-
-                const selectedInput = document.querySelector(`input[name="q${qNum}"]:checked`);
-                const selectedVal = selectedInput ? selectedInput.value : null;
-
-                const isCorrect = selectedVal === solution;
-                quizResults[qNum] = { isCorrect, selectedVal, solution, score };
+                const isCorrect = solution && userAnswer === solution;
+                quizResults[i] = { isCorrect, selectedVal: userAnswer, solution, score };
 
                 if (isCorrect) {
                     totalScore += score;
                     correctCount++;
                 }
-            });
+            }
 
             // Hide quiz nav and questions
             document.getElementById('quiz-nav').style.display = 'none';
-            document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
+            document.getElementById('questions-section').style.display = 'none';
 
             // Build results nav grid
             const resultsNavGrid = document.getElementById('results-nav-grid');
             resultsNavGrid.innerHTML = '';
-            Object.keys(quizResults).forEach(qNum => {
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
                 const btn = document.createElement('button');
-                btn.className = 'result-nav-btn ' + (quizResults[qNum].isCorrect ? 'correct' : 'incorrect');
-                btn.innerText = qNum;
+                btn.className = 'result-nav-btn ' + (quizResults[i].isCorrect ? 'correct' : 'incorrect');
+                btn.innerText = i;
                 resultsNavGrid.appendChild(btn);
-            });
+            }
 
             // Update summary
-            document.getElementById('correct-count').innerText = `${correctCount} sur ${totalQuestions} Questions sont correctes.`;
+            document.getElementById('correct-count').innerText = `${correctCount} sur ${TOTAL_QUESTIONS} Questions sont correctes.`;
 
-            const percentage = Math.round((totalScore / maxScore) * 100);
+            const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
             document.getElementById('score-bar').style.width = percentage + '%';
             document.getElementById('score-text').innerText = `Vous avez atteint ${totalScore} sur ${maxScore} point(s), (${percentage}%)`;
 
-            // Calculate rank based on score
+            // Calculate rank
             let rank = 'Non classé';
-            if (totalScore >= 600) {
-                rank = 'C2';
-            } else if (totalScore >= 500) {
-                rank = 'C1';
-            } else if (totalScore >= 400) {
-                rank = 'B2';
-            } else if (totalScore >= 300) {
-                rank = 'B1';
-            } else if (totalScore >= 200) {
-                rank = 'A2';
-            } else if (totalScore >= 100) {
-                rank = 'A1';
-            }
+            if (totalScore >= 600) rank = 'C2';
+            else if (totalScore >= 500) rank = 'C1';
+            else if (totalScore >= 400) rank = 'B2';
+            else if (totalScore >= 300) rank = 'B1';
+            else if (totalScore >= 200) rank = 'A2';
+            else if (totalScore >= 100) rank = 'A1';
             document.getElementById('rank-display').innerHTML = `<h3>${rank}</h3><p>Votre niveau</p>`;
 
-            // Show results summary
             document.getElementById('results-summary').style.display = 'block';
             window.scrollTo(0, 0);
         }
 
-        function showAnswers() {
-            // Apply correct/incorrect classes to choices
-            document.querySelectorAll('.question-container').forEach(container => {
-                container.style.display = 'block';
-                const qNum = container.id.replace('question-', '');
-                const result = quizResults[qNum];
+        async function showAnswers() {
+            // Load all questions for review
+            const container = document.getElementById('questions-section');
+            container.style.display = 'block';
+            container.innerHTML = '<p>Chargement des réponses...</p>';
 
-                container.querySelectorAll('.choice-item input').forEach(input => {
-                    const label = input.parentElement;
-                    const val = input.value;
+            let allHtml = '';
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+                if (!questionCache[i]) {
+                    const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
+                    questionCache[i] = await response.json();
+                }
+                const data = questionCache[i];
+                const result = quizResults[i];
 
-                    if (val === result.solution) {
-                        label.classList.add('correct');
-                    }
-                    if (result.selectedVal === val && val !== result.solution) {
-                        label.classList.add('incorrect');
-                    }
-                });
-            });
+                let imageHtml = '';
+                if (data.image_qst && data.image_qst !== EMPTY_PIXEL) {
+                    imageHtml = `<div class="image-wrapper"><img style="width: 500px;" src="${data.image_qst}" class="question-img"></div>`;
+                }
 
-            // Hide quiz actions
-            document.querySelectorAll('.quiz-actions').forEach(el => el.style.display = 'none');
+                allHtml += `
+                    <div class="question-container" style="margin-bottom: 20px;">
+                        <div class="question-header">
+                            <h2>Question ${i} :</h2>
+                            <span class="points">${data.score} Points</span>
+                        </div>
+                        <div class="question-content">
+                            ${imageHtml}
+                            <p class="instruction">${data.text_qst}</p>
+                            <div class="choices">
+                                ${['A', 'B', 'C', 'D'].map(choice => {
+                    const isCorrect = choice === data.solution_qst;
+                    const isSelected = result.selectedVal === choice;
+                    const classes = [];
+                    if (isCorrect) classes.push('correct');
+                    if (isSelected && !isCorrect) classes.push('incorrect');
+                    return `<label class="choice-item ${classes.join(' ')}">
+                                        <input type="radio" disabled ${isSelected ? 'checked' : ''}>
+                                        <span class="choice-label">${choice}</span>
+                                        <span class="choice-text">${data['choice_' + choice.toLowerCase()]}</span>
+                                    </label>`;
+                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            container.innerHTML = allHtml;
         }
 
         function restartQuiz() {
-            // Reset all
             quizResults = {};
-            document.querySelectorAll('.choice-item').forEach(el => {
-                el.classList.remove('correct', 'incorrect');
-            });
-            document.querySelectorAll('input[type="radio"]').forEach(el => el.checked = false);
-            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('answered'));
-            document.querySelectorAll('.quiz-actions').forEach(el => el.style.display = 'flex');
+            userAnswers = {};
+            currentQuestion = 1;
 
-            // Hide results, show quiz
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('answered'));
             document.getElementById('results-summary').style.display = 'none';
             document.getElementById('quiz-nav').style.display = 'block';
+            document.getElementById('questions-section').style.display = 'block';
 
-            // Show first question
-            document.querySelectorAll('.question-container').forEach(el => el.style.display = 'none');
-            document.querySelector('.question-container').style.display = 'block';
-
-            // Reset nav active state
             document.querySelectorAll('.nav-btn').forEach((el, i) => {
                 el.classList.toggle('active', i === 0);
             });
 
+            loadQuestion(1);
             window.scrollTo(0, 0);
         }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            startTimer();
+            loadQuestion(1);
+        });
     </script>
 </body>
 
