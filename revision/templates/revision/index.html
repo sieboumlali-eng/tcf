@@ -79,7 +79,8 @@
         const EMPTY_PIXEL = 'data:image/png;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
         // State
-        let currentQuestion = 1;
+        const firstQuestionNum = QUESTIONS_META.length > 0 ? QUESTIONS_META[0].num_qst : 1;
+        let currentQuestion = firstQuestionNum;
         let questionCache = {};
         let quizResults = {};
         let userAnswers = {};
@@ -359,7 +360,8 @@
         function restartQuiz() {
             quizResults = {};
             userAnswers = {};
-            currentQuestion = 1;
+            const firstQuestionNum = QUESTIONS_META.length > 0 ? QUESTIONS_META[0].num_qst : 1;
+            currentQuestion = firstQuestionNum;
 
             document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('answered'));
             document.getElementById('results-summary').style.display = 'none';
@@ -370,21 +372,23 @@
                 el.classList.toggle('active', i === 0);
             });
 
-            loadQuestion(1);
+            loadQuestion(firstQuestionNum);
             window.scrollTo(0, 0);
         }
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
             startTimer();
-            loadQuestion(1).then(() => {
+            const firstQuestionNum = QUESTIONS_META.length > 0 ? QUESTIONS_META[0].num_qst : 1;
+            loadQuestion(firstQuestionNum).then(() => {
                 // Start prefetching other questions in the background
                 prefetchAll();
             });
         });
 
         async function prefetchAll() {
-            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+            for (const meta of QUESTIONS_META) {
+                const i = meta.num_qst;
                 if (!questionCache[i]) {
                     try {
                         const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
@@ -394,7 +398,6 @@
                     } catch (e) {
                         console.warn("Prefetch failed for question " + i);
                     }
-                    // Wait 1 second between prefetches to avoid saturating the connection
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
