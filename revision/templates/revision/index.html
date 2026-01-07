@@ -377,8 +377,28 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
             startTimer();
-            loadQuestion(1);
+            loadQuestion(1).then(() => {
+                // Start prefetching other questions in the background
+                prefetchAll();
+            });
         });
+
+        async function prefetchAll() {
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+                if (!questionCache[i]) {
+                    try {
+                        const response = await fetch(`/api/exam/${EXAM_ID}/question/${i}/`);
+                        if (response.ok) {
+                            questionCache[i] = await response.json();
+                        }
+                    } catch (e) {
+                        console.warn("Prefetch failed for question " + i);
+                    }
+                    // Wait 1 second between prefetches to avoid saturating the connection
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+            }
+        }
     </script>
 </body>
 
