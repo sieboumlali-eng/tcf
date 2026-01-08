@@ -280,10 +280,7 @@ body {
     border-color: #c3e6cb;
 }
 
-.choice-item.correct .choice-label {
-    background-color: #28a745;
-    color: white;
-}
+.choice-item.correct .choice-label {}
 
 .choice-item.incorrect {
     background-color: #f8d7da;
