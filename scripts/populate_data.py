@@ -27,15 +27,12 @@ def populate():
     except:
         img_b64 = ""
 
-    # Short silent MP3 base64 for testing
-    audio_b64 = "data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//oeAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw//oeAAAAAAAAAAAAAAAAAAAAAAAAMTAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
-
     # Create Question 1
     QuestionOrale.objects.create(
         exam=exam,
         num_qst=1,
         image_qst=img_b64,
-        audio_qst=audio_b64,
+        audio_url="https://testtcf.b-cdn.net/Compr%C3%A9hension%20Orale/Compr%C3%A9hension%20Orale%20test%201/Q1.mp3",
         text_qst="Écoutez les 4 propositions, choisissez celle qui correspond à l'image",
         choice_a="A",
         choice_b="B",
@@ -50,7 +47,7 @@ def populate():
         exam=exam,
         num_qst=2,
         image_qst=img_b64, 
-        audio_qst=audio_b64,
+        audio_url="https://testtcf.b-cdn.net/Compr%C3%A9hension%20Orale/Compr%C3%A9hension%20Orale%20test%2021/Q19.mp3",
         text_qst="Écoutez le dialogue et répondez : Où se passe la scène ?",
         choice_a="À la boulangerie",
         choice_b="À la gare",

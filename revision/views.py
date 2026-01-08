@@ -30,7 +30,8 @@ def question_api(request, exam_id, question_num):
         'num_qst': question.num_qst,
         'text_qst': question.text_qst,
         'image_qst': question.image_qst or '',
-        'has_audio': bool(question.audio_qst),
+        'audio_url': question.audio_url or '',
+        'has_audio': bool(question.audio_url),
         'choice_a': question.choice_a,
         'choice_b': question.choice_b,
         'choice_c': question.choice_c,
@@ -40,39 +41,9 @@ def question_api(request, exam_id, question_num):
     }
     return JsonResponse(data)
 
-    return JsonResponse(data)
-
-def question_audio_api(request, exam_id, question_num):
-    """API endpoint to fetch just the audio data as binary stream"""
-    import base64
-    from django.http import HttpResponse
-
-    question = get_object_or_404(
-        QuestionOrale, 
-        exam_id=exam_id, 
-        num_qst=question_num
-    )
-    
-    if not question.audio_qst:
-        return HttpResponse("", status=404)
-
-    # Clean base64 string
-    audio_data = question.audio_qst
-    if "base64," in audio_data:
-        audio_data = audio_data.split("base64,")[1]
-    
-    try:
-        binary_data = base64.b64decode(audio_data)
-        response = HttpResponse(binary_data, content_type='audio/mpeg')
-        response['Content-Length'] = len(binary_data)
-        response['Accept-Ranges'] = 'bytes'
-        return response
-    except Exception as e:
-        print(f"Error decoding audio: {e}")
-        return HttpResponse("Error decoding audio", status=500)
 
 def all_questions_api(request, exam_id):
-    """Fetch all questions for an exam without audio data"""
+    """Fetch all questions for an exam with audio URL"""
     questions = QuestionOrale.objects.filter(exam_id=exam_id).order_by('num_qst')
     data = []
     for q in questions:
@@ -80,7 +51,8 @@ def all_questions_api(request, exam_id):
             'num_qst': q.num_qst,
             'text_qst': q.text_qst,
             'image_qst': q.image_qst or '',
-            'has_audio': bool(q.audio_qst),
+            'audio_url': q.audio_url or '',
+            'has_audio': bool(q.audio_url),
             'choice_a': q.choice_a,
             'choice_b': q.choice_b,
             'choice_c': q.choice_c,

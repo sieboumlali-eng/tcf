@@ -139,11 +139,10 @@
             }
 
             let audioHtml = '';
-            if (data.has_audio) {
-                // Use native audio player with preload="none" to lazy load
-                const audioUrl = `/api/exam/${EXAM_ID}/question/${data.num_qst}/audio/`;
+            if (data.has_audio && data.audio_url) {
+                // Use native audio player with preload="none" to lazy load from CDN
                 audioHtml = `<audio style="width: 100%;" controls preload="none" class="real-audio">
-                                <source src="${audioUrl}" type="audio/mpeg">
+                                <source src="${data.audio_url}" type="audio/mpeg">
                                 Your browser does not support the audio element.
                              </audio>`;
             } else {
@@ -313,11 +312,10 @@
                 }
 
                 let audioHtml = '';
-                if (data.has_audio) {
-                    const audioUrl = `/api/exam/${EXAM_ID}/question/${data.num_qst}/audio/`;
+                if (data.has_audio && data.audio_url) {
                     audioHtml = `<div class="audio-player-container">
                                     <audio style="width: 100%;" controls preload="none" class="real-audio">
-                                        <source src="${audioUrl}" type="audio/mpeg">
+                                        <source src="${data.audio_url}" type="audio/mpeg">
                                         Your browser does not support the audio element.
                                     </audio>
                                  </div>`;
