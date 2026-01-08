@@ -69,12 +69,19 @@
         <div class="exam-section">
             <h2>Written Exams</h2>
             <div class="exam-grid">
-                <!-- Placeholders -->
+                {% for exam in exams_ecrit %}
+                <a href="{% url 'exam_ecrit_detail' exam.id %}" class="exam-card">
+                    <div class="exam-icon">📝</div>
+                    <h3>Exam Ecrit {{ exam.number_exam_ecrit }}</h3>
+                    <p>{{ exam.description_exam_ecrit }}</p>
+                </a>
+                {% empty %}
                 <div class="exam-card" style="opacity: 0.5;">
                     <div class="exam-icon">📝</div>
                     <h3>Written Exam 1</h3>
                     <p>Coming Soon</p>
                 </div>
+                {% endfor %}
             </div>
         </div>
     </div>

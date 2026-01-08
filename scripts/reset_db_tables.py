@@ -13,6 +13,8 @@ def reset_db():
     with connection.cursor() as cursor:
         cursor.execute("DROP TABLE IF EXISTS revision_questionorale CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS revision_examorale CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS revision_questionecrit CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS revision_examecrit CASCADE;")
     print("Done. Tables dropped.")
 
 if __name__ == "__main__":

@@ -8,11 +8,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from revision.models import ExamOrale, QuestionOrale
+from revision.models import ExamOrale, QuestionOrale, ExamEcrit, QuestionEcrit
 
 def populate():
     # Clear existing data
     ExamOrale.objects.all().delete()
+    ExamEcrit.objects.all().delete()
     
     # Create Exam
     exam = ExamOrale.objects.create(
@@ -57,6 +58,28 @@ def populate():
         score=3
     )
 
+    print("Oral Exam populated.")
+
+    # Create Written Exam
+    exam_ecrit = ExamEcrit.objects.create(
+        number_exam_ecrit=1,
+        description_exam_ecrit="B2 Written Exam Practice"
+    )
+
+    # Create Question 1 for Written Exam
+    QuestionEcrit.objects.create(
+        exam=exam_ecrit,
+        num_qst=1,
+        image_qst=img_b64,
+        text_qst="Lisez le texte et répondez à la question.",
+        choice_a="Option A",
+        choice_b="Option B",
+        choice_c="Option C",
+        choice_d="Option D",
+        solution_qst="A",
+        score=2
+    )
+    
     print("Database populated successfully.")
 
 if __name__ == '__main__':

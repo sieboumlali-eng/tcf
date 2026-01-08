@@ -75,6 +75,7 @@
         // Configuration
         const EXAM_ID = {{ exam.id }};
         const TOTAL_QUESTIONS = {{ total_questions }};
+        const EXAM_TYPE = '{{ exam_type }}'; // 'orale' or 'ecrit'
         const QUESTIONS_META = {{ questions| safe }};
         const EMPTY_PIXEL = 'data:image/png;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
@@ -385,7 +386,8 @@
             container.innerHTML = '<div class="loading-indicator"><p>Chargement du quiz...</p></div>';
 
             try {
-                const response = await fetch(`/api/exam/${EXAM_ID}/questions/all/`);
+                const apiBase = EXAM_TYPE === 'ecrit' ? '/api/exam/ecrit' : '/api/exam';
+                const response = await fetch(`${apiBase}/${EXAM_ID}/questions/all/`);
                 if (!response.ok) throw new Error('Failed to load questions');
                 const data = await response.json();
 
