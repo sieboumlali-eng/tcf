@@ -136,7 +136,7 @@
 
             let imageHtml = '';
             if (data.image_qst && data.image_qst !== EMPTY_PIXEL) {
-                imageHtml = `<div class="image-wrapper"><img style="width: 500px;" src="${data.image_qst}" alt="Question Image" class="question-img"></div>`;
+                imageHtml = `<div class="image-wrapper"><img src="${data.image_qst}" alt="Question Image" class="question-img"></div>`;
             }
 
             let audioHtml = '';
@@ -146,7 +146,7 @@
                                 <source src="${data.audio_url}" type="audio/mpeg">
                                 Your browser does not support the audio element.
                              </audio>`;
-            } else {
+            } else if (EXAM_TYPE === 'orale') {
                 audioHtml = '<p>No audio available.</p>';
             }
 
@@ -309,7 +309,7 @@
 
                 let imageHtml = '';
                 if (data.image_qst && data.image_qst !== EMPTY_PIXEL) {
-                    imageHtml = `<div class="image-wrapper"><img style="width: 500px;" src="${data.image_qst}" class="question-img"></div>`;
+                    imageHtml = `<div class="image-wrapper"><img src="${data.image_qst}" class="question-img"></div>`;
                 }
 
                 let audioHtml = '';
@@ -320,7 +320,7 @@
                                         Your browser does not support the audio element.
                                     </audio>
                                  </div>`;
-                } else {
+                } else if (EXAM_TYPE === 'orale') {
                     audioHtml = '<p>No audio available.</p>';
                 }
 
