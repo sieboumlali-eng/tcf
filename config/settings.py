@@ -131,3 +131,11 @@ STATIC_ROOT = os.path.join(BASE_DIR,'staticfiles_build','static')
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Session Configuration
+# Session lasts for 12 hours (43200 seconds) to ensure it covers exam duration
+SESSION_COOKIE_AGE = 12 * 60 * 60  
+# Session expires when browser is closed (optional, but good for exams)
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True 
+# Ensure session is saved on every request to keep it alive while user is active
+SESSION_SAVE_EVERY_REQUEST = True
