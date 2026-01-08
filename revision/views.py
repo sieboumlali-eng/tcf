@@ -1,7 +1,9 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 from .models import ExamOrale, QuestionOrale, ExamEcrit, QuestionEcrit
 
+@login_required
 def exam_list(request):
     exams_orale = ExamOrale.objects.all()
     exams_ecrit = ExamEcrit.objects.all()
@@ -10,6 +12,7 @@ def exam_list(request):
         'exams_ecrit': exams_ecrit
     })
 
+@login_required
 def exam_detail(request, exam_id):
     exam = get_object_or_404(ExamOrale, pk=exam_id)
     # Only get question numbers, not the heavy data
@@ -23,6 +26,7 @@ def exam_detail(request, exam_id):
     }
     return render(request, 'revision/index.html', context)
 
+@login_required
 def exam_ecrit_detail(request, exam_id):
     exam = get_object_or_404(ExamEcrit, pk=exam_id)
     questions = exam.questions.all().order_by('num_qst').values('num_qst', 'score')
@@ -35,6 +39,7 @@ def exam_ecrit_detail(request, exam_id):
     }
     return render(request, 'revision/index.html', context)
 
+@login_required
 def question_api(request, exam_id, question_num):
     """API endpoint to fetch a single question's data (Orale)"""
     question = get_object_or_404(
@@ -58,6 +63,7 @@ def question_api(request, exam_id, question_num):
     }
     return JsonResponse(data)
 
+@login_required
 def question_ecrit_api(request, exam_id, question_num):
     """API endpoint to fetch a single question's data (Ecrit)"""
     question = get_object_or_404(
@@ -81,6 +87,7 @@ def question_ecrit_api(request, exam_id, question_num):
     return JsonResponse(data)
 
 
+@login_required
 def all_questions_api(request, exam_id):
     """Fetch all questions for an exam with audio URL (Orale)"""
     questions = QuestionOrale.objects.filter(exam_id=exam_id).order_by('num_qst')
@@ -101,6 +108,8 @@ def all_questions_api(request, exam_id):
         })
     return JsonResponse({'questions': data})
 
+
+@login_required
 def all_questions_ecrit_api(request, exam_id):
     """Fetch all questions for an exam (Ecrit)"""
     questions = QuestionEcrit.objects.filter(exam_id=exam_id).order_by('num_qst')
